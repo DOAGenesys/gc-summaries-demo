@@ -40,7 +40,7 @@ export default async function LoginPage() {
           </div>
 
           <div className="flex justify-center mb-10">
-            <Image src="/movistar-logo.png" alt="Movistar" width={400} height={120} className="h-24 w-auto" priority />
+            <Image src="/movistar-logo.png" alt="Movistar" width={400} height={120} className="h-40 w-auto" priority />
           </div>
 
           <div className="mb-8 text-center">

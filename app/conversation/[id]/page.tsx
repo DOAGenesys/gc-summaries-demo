@@ -140,8 +140,8 @@ export default async function ConversationDetailPage({
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Image src="/movistar-logo.png" alt="Movistar" width={280} height={84} className="h-16 w-auto" priority />
-              <div className="h-8 w-px bg-gradient-to-b from-transparent via-blue-300 to-transparent" />
+              <Image src="/movistar-logo.png" alt="Movistar" width={280} height={84} className="h-32 w-auto" priority />
+              <div className="h-16 w-px bg-gradient-to-b from-transparent via-blue-300 to-transparent" />
               <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
                 {t.conversationDetails}
               </h1>
