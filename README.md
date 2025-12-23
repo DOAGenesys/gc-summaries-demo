@@ -1,6 +1,6 @@
 # Movistar Conversation Analytics Platform
 
-A secure, modern Next.js application for visualizing and analyzing conversation summaries with AI-powered insights. Built with Next.js 16, TypeScript, and Neon Postgres.
+A secure, modern Next.js app for visualizing and analyzing conversation summaries with AI-powered insights. Built with Next.js 16, TypeScript, and Neon Postgres.
 
 ## Features
 
