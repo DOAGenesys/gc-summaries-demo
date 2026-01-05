@@ -1,4 +1,4 @@
-# Movistar Conversation Analytics Platform
+# Push GC summaries to external app
 
 A secure, modern Next.js app for visualizing and analyzing conversation summaries with AI-powered insights. Built with Next.js 16, TypeScript, and Neon Postgres.
 
