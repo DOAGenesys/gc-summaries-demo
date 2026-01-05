@@ -58,7 +58,7 @@ PRIMARY_COLOR=#0B6CFF
 | `USERNAME` | Yes | - | Admin username for login |
 | `PASSWORD` | Yes | - | Admin password for login |
 | `API_KEY` | Yes | - | API key for POST endpoint authentication |
-| `LOGO_URL` | No | `/movistar-logo.png` | URL to your logo image (supports external URLs) |
+| `LOGO_URL` | No | - | URL to your logo image (supports external URLs) |
 | `PRIMARY_COLOR` | No | `#0B6CFF` | Primary color in hex format for theming |
 
 ## Database Setup
