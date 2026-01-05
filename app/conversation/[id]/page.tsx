@@ -88,7 +88,9 @@ export default async function ConversationDetailPage({
   let childSummaries: ConversationRow[] = []
   if (conversation.summary_type === "Conversation") {
     childSummaries = await sql<ConversationRow[]>`
-      SELECT * FROM conversations WHERE conversation_id = ${conversation.summary_id}
+      SELECT * FROM conversations 
+      WHERE conversation_id = ${conversation.summary_id} 
+      AND summary_type != 'Conversation'
       ORDER BY date_created ASC
     `
   }

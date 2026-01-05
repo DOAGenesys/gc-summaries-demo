@@ -10,7 +10,7 @@ import { LogOut, MessageSquare, Bot, User, Users, Sparkles, TrendingUp } from "l
 import Image from "next/image"
 import { logout } from "@/app/actions/auth"
 import { LanguageSwitcher } from "@/components/language-switcher"
-import { ConversationCard, GroupedConversationCard } from "@/components/conversation-card"
+import { ConversationCard, GroupedConversationCard, SharedConversationGroup } from "@/components/conversation-card"
 import type { ConversationRow, GroupedConversation } from "@/lib/types"
 
 // Helper functions
@@ -57,32 +57,56 @@ export default async function DashboardPage() {
 
   // Group conversations: Conversation types are parents, Agent/VirtualAgent are children
   const groupedConversations: GroupedConversation[] = []
+  const sharedConversations: ConversationRow[][] = []
   const standaloneConversations: ConversationRow[] = []
-  const childrenMap = new Map<string, ConversationRow[]>()
 
-  // First pass: collect all children (non-Conversation types with conversation_id)
-  for (const conv of conversations) {
-    if (conv.conversation_id && conv.summary_type !== "Conversation") {
-      const children = childrenMap.get(conv.conversation_id) || []
-      children.push(conv)
-      childrenMap.set(conv.conversation_id, children)
-    }
-  }
+  const convMap = new Map<string, ConversationRow[]>()
 
-  // Second pass: create groups and standalone items
+  // First pass: Bucket by conversation_id
   for (const conv of conversations) {
-    if (conv.summary_type === "Conversation") {
-      const children = childrenMap.get(conv.summary_id) || []
-      groupedConversations.push({
-        parent: conv,
-        children: children.sort((a, b) => new Date(a.date_created).getTime() - new Date(b.date_created).getTime()),
-      })
-    } else if (!conv.conversation_id) {
+    if (conv.conversation_id) {
+      const list = convMap.get(conv.conversation_id) || []
+      list.push(conv)
+      convMap.set(conv.conversation_id, list)
+    } else {
       standaloneConversations.push(conv)
     }
   }
 
+  // Second pass: Process groups
+  for (const list of convMap.values()) {
+    // Check if there is a 'Conversation' type summary which acts as the explicit parent
+    const parentIndex = list.findIndex(c => c.summary_type === "Conversation")
+
+    if (parentIndex !== -1) {
+      // Standard Parent-Child relationship
+      const parent = list[parentIndex]
+      const children = list.filter((_, idx) => idx !== parentIndex)
+
+      groupedConversations.push({
+        parent,
+        children: children.sort((a, b) => new Date(a.date_created).getTime() - new Date(b.date_created).getTime()),
+      })
+    } else {
+      // No explicit parent 'Conversation' summary
+      if (list.length > 1) {
+        // Shared Parentship: Multiple summaries sharing the same ID but no main parent
+        sharedConversations.push(list.sort((a, b) => new Date(a.date_created).getTime() - new Date(b.date_created).getTime()))
+      } else {
+        // Orphan with specific ID but no siblings -> Treat as standalone
+        standaloneConversations.push(list[0])
+      }
+    }
+  }
+
+  // Sort groups by latest activity
   groupedConversations.sort((a, b) => new Date(b.parent.date_created).getTime() - new Date(a.parent.date_created).getTime())
+  sharedConversations.sort((a, b) => {
+    const dateA = a[0] ? new Date(a[0].date_created).getTime() : 0;
+    const dateB = b[0] ? new Date(b[0].date_created).getTime() : 0;
+    return dateB - dateA;
+  })
+  standaloneConversations.sort((a, b) => new Date(b.date_created).getTime() - new Date(a.date_created).getTime())
 
   // Count statistics
   const totalCount = conversations.length
@@ -437,12 +461,28 @@ export default async function DashboardPage() {
                 </div>
               ))}
 
+              {/* Shared Conversation Groups (Orphans with same Conversation ID) */}
+              {sharedConversations.map((group, index) => (
+                <div
+                  key={`shared-${index}`}
+                  className="animate-fade-in-up"
+                  style={{ animationDelay: `${(groupedConversations.length + index) * 0.05}s` }}
+                >
+                  <SharedConversationGroup
+                    conversations={group}
+                    locale={locale}
+                    translations={cardTranslations}
+                    primaryColor={primaryColor}
+                  />
+                </div>
+              ))}
+
               {/* Standalone Conversations */}
               {standaloneConversations.map((conversation, index) => (
                 <div
                   key={conversation.id}
                   className="animate-fade-in-up"
-                  style={{ animationDelay: `${(groupedConversations.length + index) * 0.05}s` }}
+                  style={{ animationDelay: `${(groupedConversations.length + sharedConversations.length + index) * 0.05}s` }}
                 >
                   <ConversationCard
                     conversation={conversation}
