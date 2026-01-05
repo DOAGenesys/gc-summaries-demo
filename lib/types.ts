@@ -18,7 +18,7 @@ export interface ConversationSummary {
   generated: boolean
   dateCreated: string
   conversationId?: string  // Groups summaries together; required for Agent/VirtualAgent
-  insights?: Insight[]
+  insights?: Insight[] | string  // Accepts array or stringified JSON (for Genesys Data Actions)
 }
 
 export interface ConversationApiRequest {

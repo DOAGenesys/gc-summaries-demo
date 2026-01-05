@@ -51,9 +51,21 @@ export async function POST(request: NextRequest) {
 
       const conversationId = conversationResult[0].id
 
-      // Insert insights if present
-      if (entity.insights && Array.isArray(entity.insights)) {
-        for (const insight of entity.insights) {
+      // Insert insights if present (supports both array and stringified JSON for Genesys Data Actions)
+      let insightsArray = entity.insights
+
+      // If insights is a string, try to parse it as JSON
+      if (typeof insightsArray === 'string') {
+        try {
+          insightsArray = JSON.parse(insightsArray)
+        } catch {
+          console.warn('[API] Failed to parse insights string as JSON:', insightsArray)
+          insightsArray = undefined
+        }
+      }
+
+      if (insightsArray && Array.isArray(insightsArray)) {
+        for (const insight of insightsArray) {
           await sql`
             INSERT INTO insights (
               conversation_id, type, title, description, outcome
