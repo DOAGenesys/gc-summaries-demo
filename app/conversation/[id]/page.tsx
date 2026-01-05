@@ -132,9 +132,25 @@ export default async function ConversationDetailPage({
     }
   }
 
+  const getLocaleString = (locale: string) => {
+    const localeMap: Record<string, string> = {
+      es: "es-ES",
+      en: "en-US",
+      fr: "fr-FR",
+      nl: "nl-NL",
+      it: "it-IT",
+      de: "de-DE",
+      ar: "ar-SA",
+      el: "el-GR",
+      pl: "pl-PL",
+      pt: "pt-PT",
+    }
+    return localeMap[locale] || "en-US"
+  }
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
-    return new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-US", {
+    return new Intl.DateTimeFormat(getLocaleString(locale), {
       month: "long",
       day: "numeric",
       year: "numeric",
@@ -143,6 +159,19 @@ export default async function ConversationDetailPage({
       second: "2-digit",
       timeZoneName: "short",
     }).format(date)
+  }
+
+  const languageMap: Record<string, string> = {
+    es: t.spanish,
+    en: t.english,
+    fr: t.french,
+    nl: t.dutch,
+    it: t.italian,
+    de: t.german,
+    ar: t.arabic,
+    el: t.greek,
+    pl: t.polish,
+    pt: t.portuguese,
   }
 
   const getSummaryTypeLabel = (summaryType: string) => {
@@ -288,7 +317,7 @@ export default async function ConversationDetailPage({
                         : conversation.media_type}
                 </Badge>
                 <Badge variant="outline" className="font-semibold px-3 py-1 rounded-full border-gray-200">
-                  {conversation.language.toUpperCase()}
+                  {(languageMap[conversation.language] || conversation.language).toUpperCase()}
                 </Badge>
                 {conversation.generated && (
                   <Badge
@@ -332,7 +361,7 @@ export default async function ConversationDetailPage({
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-8">
                 {[
                   { icon: Calendar, label: t.dateCreated, value: formatDate(conversation.date_created) },
-                  { icon: Globe, label: t.language, value: conversation.language === "es" ? t.spanish : conversation.language === "en" ? t.english : conversation.language },
+                  { icon: Globe, label: t.language, value: languageMap[conversation.language] || conversation.language },
                   { icon: Hash, label: t.summaryId, value: conversation.summary_id, mono: true },
                   { icon: Hash, label: t.sourceId, value: conversation.source_id, mono: true },
                   ...(conversation.agent_id ? [{ icon: User, label: t.agentId, value: conversation.agent_id, mono: true }] : []),

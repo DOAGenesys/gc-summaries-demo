@@ -47,9 +47,22 @@ interface GroupedConversationCardProps {
 }
 
 // Date formatting function (moved to client component)
+// Date formatting function (moved to client component)
 function formatDate(dateString: string, locale: string): string {
+    const localeMap: Record<string, string> = {
+        es: "es-ES",
+        en: "en-US",
+        fr: "fr-FR",
+        nl: "nl-NL",
+        it: "it-IT",
+        de: "de-DE",
+        ar: "ar-SA",
+        el: "el-GR",
+        pl: "pl-PL",
+        pt: "pt-PT",
+    }
     const date = new Date(dateString)
-    return new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-US", {
+    return new Intl.DateTimeFormat(localeMap[locale] || "en-US", {
         month: "short",
         day: "numeric",
         year: "numeric",

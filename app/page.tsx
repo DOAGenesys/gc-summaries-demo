@@ -191,7 +191,7 @@ export default async function DashboardPage() {
                 >
                   {t.appTitle}
                 </h1>
-                <p className="text-xs text-gray-500 font-medium mt-0.5">Analytics Platform</p>
+                <p className="text-xs text-gray-500 font-medium mt-0.5">{t.analyticsPlatform}</p>
               </div>
             </div>
 
@@ -241,7 +241,7 @@ export default async function DashboardPage() {
                   </p>
                   <div className="flex items-center gap-1 mt-2">
                     <TrendingUp className="size-3" style={{ color: primaryColor }} />
-                    <span className="text-xs font-medium" style={{ color: primaryColor }}>Active</span>
+                    <span className="text-xs font-medium" style={{ color: primaryColor }}>{t.active}</span>
                   </div>
                 </div>
                 <div
@@ -280,7 +280,7 @@ export default async function DashboardPage() {
                   >
                     {conversationCount}
                   </p>
-                  <p className="text-xs text-gray-400 font-medium mt-2">Parent summaries</p>
+                  <p className="text-xs text-gray-400 font-medium mt-2">{t.parentSummaries}</p>
                 </div>
                 <div
                   className="size-12 lg:size-14 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-500"
@@ -318,7 +318,7 @@ export default async function DashboardPage() {
                   >
                     {agentCount}
                   </p>
-                  <p className="text-xs text-gray-400 font-medium mt-2">Human agents</p>
+                  <p className="text-xs text-gray-400 font-medium mt-2">{t.humanAgents}</p>
                 </div>
                 <div
                   className="size-12 lg:size-14 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-500"
@@ -356,7 +356,7 @@ export default async function DashboardPage() {
                   >
                     {virtualAgentCount}
                   </p>
-                  <p className="text-xs text-gray-400 font-medium mt-2">AI assistants</p>
+                  <p className="text-xs text-gray-400 font-medium mt-2">{t.aiAssistants}</p>
                 </div>
                 <div
                   className="size-12 lg:size-14 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-500"
@@ -389,7 +389,7 @@ export default async function DashboardPage() {
                 {t.recentConversations}
               </h2>
               <p className="text-sm text-gray-500 mt-1 font-medium">
-                Manage and explore your conversation summaries
+                {t.manageConversations}
               </p>
             </div>
             <div
