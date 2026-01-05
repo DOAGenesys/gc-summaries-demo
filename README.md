@@ -490,10 +490,6 @@ curl -X POST https://your-app.vercel.app/api/conversations \
 - Ensure `PRIMARY_COLOR` is in valid hex format (e.g., `#FF5500`)
 - The `#` prefix is optional but recommended
 
-## License
-
-MIT
-
 ## Support
 
-For issues or questions, please contact your system administrator.
+This is just a blueprint, provided as-is.
