@@ -13,7 +13,7 @@ import type { ConversationRow, GroupedConversation } from "@/lib/types"
 interface ConversationCardProps {
     conversation: ConversationRow
     isChild?: boolean
-    formatDate: (date: string) => string
+    locale: string
     translations: {
         agent: string
         virtualAgentBadge: string
@@ -41,9 +41,21 @@ interface ConversationCardProps {
 
 interface GroupedConversationCardProps {
     group: GroupedConversation
-    formatDate: (date: string) => string
+    locale: string
     translations: ConversationCardProps["translations"]
     primaryColor: string
+}
+
+// Date formatting function (moved to client component)
+function formatDate(dateString: string, locale: string): string {
+    const date = new Date(dateString)
+    return new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    }).format(date)
 }
 
 function getMediaIcon(mediaType: string, className = "size-4") {
@@ -107,7 +119,7 @@ function hexToRgba(hex: string, alpha: number): string {
 export function ConversationCard({
     conversation,
     isChild = false,
-    formatDate,
+    locale,
     translations,
     primaryColor,
     hasChildren = false,
@@ -206,7 +218,7 @@ export function ConversationCard({
                         <CardDescription className="text-sm font-medium text-gray-500 flex items-center gap-2">
                             <span className="inline-flex items-center gap-1.5">
                                 <span className="size-1.5 rounded-full" style={{ background: primaryColor }} />
-                                {formatDate(conversation.date_created)}
+                                {formatDate(conversation.date_created, locale)}
                             </span>
                             <span className="text-gray-300">·</span>
                             <span className="font-mono text-xs text-gray-400">
@@ -232,7 +244,7 @@ export function ConversationCard({
 
 export function GroupedConversationCard({
     group,
-    formatDate,
+    locale,
     translations,
     primaryColor,
 }: GroupedConversationCardProps) {
@@ -347,7 +359,7 @@ export function GroupedConversationCard({
                             <CardDescription className="text-sm font-medium text-gray-500 flex items-center gap-2">
                                 <span className="inline-flex items-center gap-1.5">
                                     <span className="size-1.5 rounded-full animate-pulse" style={{ background: primaryColor }} />
-                                    {formatDate(group.parent.date_created)}
+                                    {formatDate(group.parent.date_created, locale)}
                                 </span>
                                 <span className="text-gray-300">·</span>
                                 <span className="font-mono text-xs text-gray-400">
@@ -406,7 +418,7 @@ export function GroupedConversationCard({
                                 <ConversationCard
                                     conversation={child}
                                     isChild
-                                    formatDate={formatDate}
+                                    locale={locale}
                                     translations={translations}
                                     primaryColor={primaryColor}
                                 />

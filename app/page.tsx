@@ -55,17 +55,6 @@ export default async function DashboardPage() {
   const locale = await getLocale()
   const t = getTranslations(locale)
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(date)
-  }
-
   // Group conversations: Conversation types are parents, Agent/VirtualAgent are children
   const groupedConversations: GroupedConversation[] = []
   const standaloneConversations: ConversationRow[] = []
@@ -441,7 +430,7 @@ export default async function DashboardPage() {
                 >
                   <GroupedConversationCard
                     group={group}
-                    formatDate={formatDate}
+                    locale={locale}
                     translations={cardTranslations}
                     primaryColor={primaryColor}
                   />
@@ -457,7 +446,7 @@ export default async function DashboardPage() {
                 >
                   <ConversationCard
                     conversation={conversation}
-                    formatDate={formatDate}
+                    locale={locale}
                     translations={cardTranslations}
                     primaryColor={primaryColor}
                   />
