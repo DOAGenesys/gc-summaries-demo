@@ -21,11 +21,19 @@ export async function POST(request: NextRequest) {
 
     // Process each entity
     for (const entity of body.entities) {
+      // Validate conversationId for child summaries
+      if ((entity.summaryType === "Agent" || entity.summaryType === "VirtualAgent") && !entity.conversationId) {
+        return NextResponse.json(
+          { error: `conversationId is required for summaryType "${entity.summaryType}"` },
+          { status: 400 }
+        )
+      }
+
       // Insert conversation
       const conversationResult = await sql`
         INSERT INTO conversations (
           summary_type, media_type, language, summary_id, agent_id, 
-          source_id, summary, generated, date_created
+          source_id, summary, generated, date_created, conversation_id
         ) VALUES (
           ${entity.summaryType}, 
           ${entity.mediaType}, 
@@ -35,7 +43,8 @@ export async function POST(request: NextRequest) {
           ${entity.sourceId}, 
           ${entity.summary}, 
           ${entity.generated}, 
-          ${entity.dateCreated}
+          ${entity.dateCreated},
+          ${entity.conversationId || null}
         )
         RETURNING id
       `

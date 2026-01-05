@@ -3,25 +3,32 @@ import { getSession } from "@/lib/auth"
 import { sql } from "@/lib/db"
 import { getLocale } from "@/lib/locale"
 import { getTranslations } from "@/lib/i18n"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { getLogoUrl, getPrimaryColor } from "@/lib/env"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { LogOut, MessageSquare, Phone, Mail, Bot, User } from "lucide-react"
+import { LogOut, MessageSquare, Bot, User, Users, Sparkles, TrendingUp } from "lucide-react"
 import Image from "next/image"
-import Link from "next/link"
 import { logout } from "@/app/actions/auth"
 import { LanguageSwitcher } from "@/components/language-switcher"
+import { ConversationCard, GroupedConversationCard } from "@/components/conversation-card"
+import type { ConversationRow, GroupedConversation } from "@/lib/types"
 
-interface ConversationRow {
-  id: number
-  summary_type: string
-  media_type: string
-  language: string
-  summary_id: string
-  agent_id: string | null
-  summary: string
-  date_created: string
-  insight_count: string
+// Helper functions
+function adjustBrightness(hex: string, percent: number): string {
+  const cleanHex = hex.replace("#", "")
+  const num = parseInt(cleanHex, 16)
+  const r = Math.min(255, Math.max(0, (num >> 16) + percent))
+  const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00ff) + percent))
+  const b = Math.min(255, Math.max(0, (num & 0x0000ff) + percent))
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const cleanHex = hex.replace("#", "")
+  const r = parseInt(cleanHex.substring(0, 2), 16)
+  const g = parseInt(cleanHex.substring(2, 4), 16)
+  const b = parseInt(cleanHex.substring(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
 export default async function DashboardPage() {
@@ -29,6 +36,10 @@ export default async function DashboardPage() {
   if (!session) {
     redirect("/login")
   }
+
+  // Get environment-based config
+  const logoUrl = getLogoUrl()
+  const primaryColor = getPrimaryColor()
 
   // Fetch all conversations with insight counts
   const conversations = await sql<ConversationRow[]>`
@@ -44,30 +55,6 @@ export default async function DashboardPage() {
   const locale = await getLocale()
   const t = getTranslations(locale)
 
-  const getMediaIcon = (mediaType: string) => {
-    switch (mediaType.toLowerCase()) {
-      case "call":
-        return <Phone className="size-4" />
-      case "email":
-        return <Mail className="size-4" />
-      case "message":
-        return <MessageSquare className="size-4" />
-      default:
-        return <MessageSquare className="size-4" />
-    }
-  }
-
-  const getSummaryTypeIcon = (summaryType: string) => {
-    switch (summaryType.toLowerCase()) {
-      case "virtualagent":
-        return <Bot className="size-4" />
-      case "agent":
-        return <User className="size-4" />
-      default:
-        return <MessageSquare className="size-4" />
-    }
-  }
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-US", {
@@ -79,29 +66,156 @@ export default async function DashboardPage() {
     }).format(date)
   }
 
+  // Group conversations: Conversation types are parents, Agent/VirtualAgent are children
+  const groupedConversations: GroupedConversation[] = []
+  const standaloneConversations: ConversationRow[] = []
+  const childrenMap = new Map<string, ConversationRow[]>()
+
+  // First pass: collect all children (Agent/VirtualAgent with conversation_id)
+  for (const conv of conversations) {
+    if ((conv.summary_type === "Agent" || conv.summary_type === "VirtualAgent") && conv.conversation_id) {
+      const children = childrenMap.get(conv.conversation_id) || []
+      children.push(conv)
+      childrenMap.set(conv.conversation_id, children)
+    }
+  }
+
+  // Second pass: create groups and standalone items
+  for (const conv of conversations) {
+    if (conv.summary_type === "Conversation") {
+      const children = childrenMap.get(conv.summary_id) || []
+      groupedConversations.push({
+        parent: conv,
+        children: children.sort((a, b) => new Date(a.date_created).getTime() - new Date(b.date_created).getTime()),
+      })
+    } else if (!conv.conversation_id) {
+      standaloneConversations.push(conv)
+    }
+  }
+
+  groupedConversations.sort((a, b) => new Date(b.parent.date_created).getTime() - new Date(a.parent.date_created).getTime())
+
+  // Count statistics
+  const totalCount = conversations.length
+  const agentCount = conversations.filter((c) => c.summary_type === "Agent").length
+  const virtualAgentCount = conversations.filter((c) => c.summary_type === "VirtualAgent").length
+  const conversationCount = conversations.filter((c) => c.summary_type === "Conversation").length
+
+  const cardTranslations = {
+    agent: t.agent,
+    virtualAgentBadge: t.virtualAgentBadge,
+    conversation: t.conversation,
+    call: t.call,
+    email: t.email,
+    message: t.message,
+    insight: t.insight,
+    insightPlural: t.insightPlural,
+    childSummaries: t.childSummaries,
+    childSummary: t.childSummary,
+    showChildren: t.showChildren,
+    hideChildren: t.hideChildren,
+    delete: t.delete,
+    deleteConfirmTitle: t.deleteConfirmTitle,
+    deleteConfirmDescription: t.deleteConfirmDescription,
+    deleteParentWarning: t.deleteParentWarning,
+    cancel: t.cancel,
+    confirm: t.confirm,
+    deleting: t.deleting,
+  }
+
+  const isExternalLogo = logoUrl.startsWith("http://") || logoUrl.startsWith("https://")
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Premium Background */}
+      <div
+        className="fixed inset-0 -z-10"
+        style={{
+          background: `
+            radial-gradient(ellipse 80% 50% at 50% -20%, ${hexToRgba(primaryColor, 0.08)}, transparent),
+            radial-gradient(ellipse 60% 40% at 100% 0%, ${hexToRgba(primaryColor, 0.05)}, transparent),
+            radial-gradient(ellipse 50% 30% at 0% 100%, ${hexToRgba(primaryColor, 0.03)}, transparent),
+            linear-gradient(180deg, #fafbff 0%, #f8faff 50%, #f5f7ff 100%)
+          `
+        }}
+      />
+
+      {/* Decorative Grid Pattern */}
+      <div
+        className="fixed inset-0 -z-10 opacity-[0.015]"
+        style={{
+          backgroundImage: `
+            linear-gradient(${primaryColor} 1px, transparent 1px),
+            linear-gradient(90deg, ${primaryColor} 1px, transparent 1px)
+          `,
+          backgroundSize: '60px 60px'
+        }}
+      />
+
       {/* Header */}
-      <header className="bg-white/80 glass-effect border-b border-blue-100/50 sticky top-0 z-10 shadow-sm">
+      <header
+        className="sticky top-0 z-50 border-b"
+        style={{
+          background: 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+          borderColor: hexToRgba(primaryColor, 0.1)
+        }}
+      >
+        {/* Top accent line */}
+        <div
+          className="absolute top-0 left-0 right-0 h-[3px]"
+          style={{
+            background: `linear-gradient(90deg, ${primaryColor}, ${adjustBrightness(primaryColor, 30)}, ${primaryColor})`
+          }}
+        />
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Image src="/movistar-logo.png" alt="Movistar" width={280} height={84} className="h-32 w-auto" priority />
-              <div className="h-16 w-px bg-gradient-to-b from-transparent via-blue-300 to-transparent" />
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
-                {t.appTitle}
-              </h1>
+            <div className="flex items-center gap-5">
+              <div className="relative">
+                {isExternalLogo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={logoUrl} alt="Logo" className="h-16 w-auto" />
+                ) : (
+                  <Image src={logoUrl} alt="Logo" width={280} height={84} className="h-16 w-auto" priority />
+                )}
+              </div>
+
+              {/* Divider */}
+              <div
+                className="h-10 w-px hidden sm:block"
+                style={{
+                  background: `linear-gradient(180deg, transparent, ${hexToRgba(primaryColor, 0.3)}, transparent)`
+                }}
+              />
+
+              <div className="hidden sm:block">
+                <h1
+                  className="text-xl font-bold"
+                  style={{
+                    background: `linear-gradient(135deg, #1a1a2e 0%, ${primaryColor} 50%, #1a1a2e 100%)`,
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text'
+                  }}
+                >
+                  {t.appTitle}
+                </h1>
+                <p className="text-xs text-gray-500 font-medium mt-0.5">Analytics Platform</p>
+              </div>
             </div>
+
             <div className="flex items-center gap-3">
-              <LanguageSwitcher currentLocale={locale} />
+              <LanguageSwitcher currentLocale={locale} primaryColor={primaryColor} />
               <form action={logout}>
                 <Button
                   variant="outline"
                   size="default"
-                  className="gap-2 shadow-sm hover:shadow-md transition-all bg-transparent"
+                  className="gap-2 rounded-xl border-gray-200 hover:border-gray-300 bg-white/50 hover:bg-white transition-all duration-300 shadow-sm hover:shadow-md"
                 >
                   <LogOut className="size-4" />
-                  {t.signOut}
+                  <span className="hidden sm:inline">{t.signOut}</span>
                 </Button>
               </form>
             </div>
@@ -110,52 +224,159 @@ export default async function DashboardPage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
-          <Card className="bg-white border-blue-100 shadow-movistar hover:shadow-movistar-lg transition-all duration-300 hover:-translate-y-1">
-            <CardContent className="pt-8 pb-6">
-              <div className="flex items-center justify-between">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-12">
+          {/* Total Card */}
+          <Card
+            className="group relative bg-white/80 backdrop-blur-sm border-0 shadow-premium hover:shadow-premium-lg transition-all duration-500 rounded-2xl overflow-hidden hover:-translate-y-1"
+          >
+            <div
+              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+              style={{ background: `linear-gradient(135deg, ${hexToRgba(primaryColor, 0.05)} 0%, transparent 60%)` }}
+            />
+            <CardContent className="pt-6 pb-5 relative">
+              <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 mb-2">{t.totalConversations}</p>
-                  <p className="text-5xl font-black bg-gradient-to-br from-[#0B6CFF] to-[#0056d6] bg-clip-text text-transparent">
-                    {conversations.length}
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t.totalConversations}</p>
+                  <p
+                    className="text-4xl lg:text-5xl font-black"
+                    style={{
+                      background: `linear-gradient(135deg, ${primaryColor} 0%, ${adjustBrightness(primaryColor, -30)} 100%)`,
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text'
+                    }}
+                  >
+                    {totalCount}
                   </p>
+                  <div className="flex items-center gap-1 mt-2">
+                    <TrendingUp className="size-3" style={{ color: primaryColor }} />
+                    <span className="text-xs font-medium" style={{ color: primaryColor }}>Active</span>
+                  </div>
                 </div>
-                <div className="size-16 rounded-2xl gradient-movistar flex items-center justify-center shadow-lg">
-                  <MessageSquare className="size-8 text-white" />
+                <div
+                  className="size-12 lg:size-14 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-500"
+                  style={{
+                    background: `linear-gradient(135deg, ${primaryColor} 0%, ${adjustBrightness(primaryColor, -25)} 100%)`,
+                    boxShadow: `0 8px 24px ${hexToRgba(primaryColor, 0.35)}`
+                  }}
+                >
+                  <MessageSquare className="size-6 lg:size-7 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white border-blue-100 shadow-movistar hover:shadow-movistar-lg transition-all duration-300 hover:-translate-y-1">
-            <CardContent className="pt-8 pb-6">
-              <div className="flex items-center justify-between">
+          {/* Conversation Summaries Card */}
+          <Card
+            className="group relative bg-white/80 backdrop-blur-sm border-0 shadow-premium hover:shadow-premium-lg transition-all duration-500 rounded-2xl overflow-hidden hover:-translate-y-1"
+          >
+            <div
+              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+              style={{ background: `linear-gradient(135deg, ${hexToRgba(primaryColor, 0.05)} 0%, transparent 60%)` }}
+            />
+            <CardContent className="pt-6 pb-5 relative">
+              <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 mb-2">{t.agentSummaries}</p>
-                  <p className="text-5xl font-black bg-gradient-to-br from-[#0B6CFF] to-[#0056d6] bg-clip-text text-transparent">
-                    {conversations.filter((c) => c.summary_type === "Agent").length}
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t.conversationSummaries}</p>
+                  <p
+                    className="text-4xl lg:text-5xl font-black"
+                    style={{
+                      background: `linear-gradient(135deg, ${primaryColor} 0%, ${adjustBrightness(primaryColor, -30)} 100%)`,
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text'
+                    }}
+                  >
+                    {conversationCount}
                   </p>
+                  <p className="text-xs text-gray-400 font-medium mt-2">Parent summaries</p>
                 </div>
-                <div className="size-16 rounded-2xl gradient-movistar flex items-center justify-center shadow-lg">
-                  <User className="size-8 text-white" />
+                <div
+                  className="size-12 lg:size-14 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-500"
+                  style={{
+                    background: `linear-gradient(135deg, ${primaryColor} 0%, ${adjustBrightness(primaryColor, -25)} 100%)`,
+                    boxShadow: `0 8px 24px ${hexToRgba(primaryColor, 0.35)}`
+                  }}
+                >
+                  <Users className="size-6 lg:size-7 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white border-blue-100 shadow-movistar hover:shadow-movistar-lg transition-all duration-300 hover:-translate-y-1">
-            <CardContent className="pt-8 pb-6">
-              <div className="flex items-center justify-between">
+          {/* Agent Summaries Card */}
+          <Card
+            className="group relative bg-white/80 backdrop-blur-sm border-0 shadow-premium hover:shadow-premium-lg transition-all duration-500 rounded-2xl overflow-hidden hover:-translate-y-1"
+          >
+            <div
+              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+              style={{ background: `linear-gradient(135deg, ${hexToRgba(primaryColor, 0.05)} 0%, transparent 60%)` }}
+            />
+            <CardContent className="pt-6 pb-5 relative">
+              <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 mb-2">{t.virtualAgent}</p>
-                  <p className="text-5xl font-black bg-gradient-to-br from-[#0B6CFF] to-[#0056d6] bg-clip-text text-transparent">
-                    {conversations.filter((c) => c.summary_type === "VirtualAgent").length}
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t.agentSummaries}</p>
+                  <p
+                    className="text-4xl lg:text-5xl font-black"
+                    style={{
+                      background: `linear-gradient(135deg, ${primaryColor} 0%, ${adjustBrightness(primaryColor, -30)} 100%)`,
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text'
+                    }}
+                  >
+                    {agentCount}
                   </p>
+                  <p className="text-xs text-gray-400 font-medium mt-2">Human agents</p>
                 </div>
-                <div className="size-16 rounded-2xl gradient-movistar flex items-center justify-center shadow-lg">
-                  <Bot className="size-8 text-white" />
+                <div
+                  className="size-12 lg:size-14 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-500"
+                  style={{
+                    background: `linear-gradient(135deg, ${primaryColor} 0%, ${adjustBrightness(primaryColor, -25)} 100%)`,
+                    boxShadow: `0 8px 24px ${hexToRgba(primaryColor, 0.35)}`
+                  }}
+                >
+                  <User className="size-6 lg:size-7 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Virtual Agent Card */}
+          <Card
+            className="group relative bg-white/80 backdrop-blur-sm border-0 shadow-premium hover:shadow-premium-lg transition-all duration-500 rounded-2xl overflow-hidden hover:-translate-y-1"
+          >
+            <div
+              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+              style={{ background: `linear-gradient(135deg, ${hexToRgba(primaryColor, 0.05)} 0%, transparent 60%)` }}
+            />
+            <CardContent className="pt-6 pb-5 relative">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{t.virtualAgent}</p>
+                  <p
+                    className="text-4xl lg:text-5xl font-black"
+                    style={{
+                      background: `linear-gradient(135deg, ${primaryColor} 0%, ${adjustBrightness(primaryColor, -30)} 100%)`,
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text'
+                    }}
+                  >
+                    {virtualAgentCount}
+                  </p>
+                  <p className="text-xs text-gray-400 font-medium mt-2">AI assistants</p>
+                </div>
+                <div
+                  className="size-12 lg:size-14 rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-500"
+                  style={{
+                    background: `linear-gradient(135deg, ${primaryColor} 0%, ${adjustBrightness(primaryColor, -25)} 100%)`,
+                    boxShadow: `0 8px 24px ${hexToRgba(primaryColor, 0.35)}`
+                  }}
+                >
+                  <Bot className="size-6 lg:size-7 text-white" />
                 </div>
               </div>
             </CardContent>
@@ -164,70 +385,97 @@ export default async function DashboardPage() {
 
         {/* Conversations List */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-3xl font-bold text-gray-900">{t.recentConversations}</h2>
-            <p className="text-base font-medium text-gray-600">
-              {conversations.length} {t.total}
-            </p>
+          {/* Section Header */}
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2
+                className="text-2xl lg:text-3xl font-bold"
+                style={{
+                  background: `linear-gradient(135deg, #1a1a2e 0%, ${primaryColor} 100%)`,
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text'
+                }}
+              >
+                {t.recentConversations}
+              </h2>
+              <p className="text-sm text-gray-500 mt-1 font-medium">
+                Manage and explore your conversation summaries
+              </p>
+            </div>
+            <div
+              className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold"
+              style={{
+                background: hexToRgba(primaryColor, 0.08),
+                color: primaryColor
+              }}
+            >
+              <Sparkles className="size-4" />
+              {totalCount} {t.total}
+            </div>
           </div>
 
-          {conversations.length === 0 ? (
-            <Card className="bg-white border-blue-100 shadow-lg">
-              <CardContent className="py-16 text-center">
-                <div className="size-20 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center mx-auto mb-6">
-                  <MessageSquare className="size-10 text-[#0B6CFF]" />
+          {totalCount === 0 ? (
+            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-premium rounded-3xl overflow-hidden">
+              <CardContent className="py-20 text-center">
+                <div
+                  className="size-24 rounded-3xl flex items-center justify-center mx-auto mb-8 animate-float"
+                  style={{
+                    background: `linear-gradient(135deg, ${hexToRgba(primaryColor, 0.1)} 0%, ${hexToRgba(primaryColor, 0.05)} 100%)`,
+                  }}
+                >
+                  <MessageSquare className="size-12" style={{ color: primaryColor }} />
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-3">{t.noConversations}</h3>
-                <p className="text-base text-gray-600">{t.noConversationsDescription}</p>
+                <h3 className="text-2xl font-bold text-gray-800 mb-3">{t.noConversations}</h3>
+                <p className="text-base text-gray-500 max-w-md mx-auto">{t.noConversationsDescription}</p>
               </CardContent>
             </Card>
           ) : (
-            conversations.map((conversation) => (
-              <Link key={conversation.id} href={`/conversation/${conversation.id}`}>
-                <Card className="bg-white border-blue-100 shadow-md hover:shadow-movistar-lg hover:border-[#0B6CFF] transition-all duration-300 cursor-pointer hover:-translate-y-0.5">
-                  <CardHeader className="pb-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-3 flex-wrap">
-                          <Badge variant="outline" className="gap-1.5 font-semibold">
-                            {getSummaryTypeIcon(conversation.summary_type)}
-                            {conversation.summary_type === "VirtualAgent" ? t.virtualAgentBadge : t.agent}
-                          </Badge>
-                          <Badge variant="secondary" className="gap-1.5 font-semibold">
-                            {getMediaIcon(conversation.media_type)}
-                            {conversation.media_type.toLowerCase() === "call"
-                              ? t.call
-                              : conversation.media_type.toLowerCase() === "email"
-                                ? t.email
-                                : conversation.media_type.toLowerCase() === "message"
-                                  ? t.message
-                                  : conversation.media_type}
-                          </Badge>
-                          <Badge variant="outline" className="font-semibold">
-                            {conversation.language.toUpperCase()}
-                          </Badge>
-                          {Number.parseInt(conversation.insight_count) > 0 && (
-                            <Badge className="gradient-movistar shadow-md font-semibold">
-                              {conversation.insight_count}{" "}
-                              {Number.parseInt(conversation.insight_count) === 1 ? t.insight : t.insightPlural}
-                            </Badge>
-                          )}
-                        </div>
-                        <CardTitle className="text-lg font-bold mb-2 line-clamp-2 text-balance leading-relaxed">
-                          {conversation.summary}
-                        </CardTitle>
-                        <CardDescription className="text-sm font-medium">
-                          {formatDate(conversation.date_created)} · ID: {conversation.summary_id.slice(0, 8)}...
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                </Card>
-              </Link>
-            ))
+            <div className="space-y-4">
+              {/* Grouped Conversations */}
+              {groupedConversations.map((group, index) => (
+                <div
+                  key={group.parent.id}
+                  className="animate-fade-in-up"
+                  style={{ animationDelay: `${index * 0.05}s` }}
+                >
+                  <GroupedConversationCard
+                    group={group}
+                    formatDate={formatDate}
+                    translations={cardTranslations}
+                    primaryColor={primaryColor}
+                  />
+                </div>
+              ))}
+
+              {/* Standalone Conversations */}
+              {standaloneConversations.map((conversation, index) => (
+                <div
+                  key={conversation.id}
+                  className="animate-fade-in-up"
+                  style={{ animationDelay: `${(groupedConversations.length + index) * 0.05}s` }}
+                >
+                  <ConversationCard
+                    conversation={conversation}
+                    formatDate={formatDate}
+                    translations={cardTranslations}
+                    primaryColor={primaryColor}
+                  />
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </main>
+
+      {/* Footer */}
+      <footer className="mt-16 py-8 border-t" style={{ borderColor: hexToRgba(primaryColor, 0.1) }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-sm text-gray-400">
+            Powered by AI · Built for exceptional experiences
+          </p>
+        </div>
+      </footer>
     </div>
   )
 }

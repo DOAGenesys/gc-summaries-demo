@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS conversations (
   summary TEXT NOT NULL,
   generated BOOLEAN DEFAULT true,
   date_created TIMESTAMP NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  conversation_id VARCHAR(255)  -- Groups Agent/VirtualAgent summaries under a Conversation parent
 );
 
 -- Create insights table to store conversation insights
@@ -28,4 +29,5 @@ CREATE TABLE IF NOT EXISTS insights (
 CREATE INDEX IF NOT EXISTS idx_conversations_summary_type ON conversations(summary_type);
 CREATE INDEX IF NOT EXISTS idx_conversations_date_created ON conversations(date_created DESC);
 CREATE INDEX IF NOT EXISTS idx_conversations_summary_id ON conversations(summary_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_conversation_id ON conversations(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_insights_conversation_id ON insights(conversation_id);

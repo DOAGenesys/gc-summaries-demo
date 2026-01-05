@@ -19,10 +19,15 @@ export const translations = {
     totalConversations: "Total de Conversaciones",
     agentSummaries: "Resúmenes de Agente",
     virtualAgent: "Agente Virtual",
+    conversationSummaries: "Resúmenes de Conversación",
     recentConversations: "Conversaciones Recientes",
     total: "total",
     noConversations: "No hay conversaciones aún",
     noConversationsDescription: "Las conversaciones aparecerán aquí una vez que se envíen a la API",
+    childSummaries: "resúmenes anidados",
+    childSummary: "resumen anidado",
+    showChildren: "Mostrar resúmenes anidados",
+    hideChildren: "Ocultar resúmenes anidados",
 
     // Conversation Details
     conversationDetails: "Detalles de la Conversación",
@@ -33,6 +38,7 @@ export const translations = {
     summaryId: "ID de Resumen",
     sourceId: "ID de Origen",
     agentId: "ID de Agente",
+    conversationIdLabel: "ID de Conversación",
 
     // Language Names
     spanish: "Español",
@@ -49,6 +55,7 @@ export const translations = {
     // Summary Types
     agent: "Agente",
     virtualAgentBadge: "Agente Virtual",
+    conversation: "Conversación",
 
     // Insight Types
     reason: "Razón",
@@ -58,6 +65,15 @@ export const translations = {
     // Insight Labels
     insight: "perspectiva",
     insightPlural: "perspectivas",
+
+    // Delete
+    delete: "Eliminar",
+    deleteConfirmTitle: "¿Eliminar conversación?",
+    deleteConfirmDescription: "Esta acción no se puede deshacer. Esto eliminará permanentemente esta conversación y todos sus datos asociados.",
+    deleteParentWarning: "⚠️ Esta es una conversación padre. Al eliminarla también se eliminarán todos los resúmenes de agente y agente virtual asociados.",
+    cancel: "Cancelar",
+    confirm: "Eliminar",
+    deleting: "Eliminando...",
   },
   en: {
     // Header & Navigation
@@ -77,10 +93,15 @@ export const translations = {
     totalConversations: "Total Conversations",
     agentSummaries: "Agent Summaries",
     virtualAgent: "Virtual Agent",
+    conversationSummaries: "Conversation Summaries",
     recentConversations: "Recent Conversations",
     total: "total",
     noConversations: "No conversations yet",
     noConversationsDescription: "Conversations will appear here once they are posted to the API",
+    childSummaries: "nested summaries",
+    childSummary: "nested summary",
+    showChildren: "Show nested summaries",
+    hideChildren: "Hide nested summaries",
 
     // Conversation Details
     conversationDetails: "Conversation Details",
@@ -91,6 +112,7 @@ export const translations = {
     summaryId: "Summary ID",
     sourceId: "Source ID",
     agentId: "Agent ID",
+    conversationIdLabel: "Conversation ID",
 
     // Language Names
     spanish: "Spanish",
@@ -107,6 +129,7 @@ export const translations = {
     // Summary Types
     agent: "Agent",
     virtualAgentBadge: "Virtual Agent",
+    conversation: "Conversation",
 
     // Insight Types
     reason: "Reason",
@@ -116,6 +139,15 @@ export const translations = {
     // Insight Labels
     insight: "insight",
     insightPlural: "insights",
+
+    // Delete
+    delete: "Delete",
+    deleteConfirmTitle: "Delete conversation?",
+    deleteConfirmDescription: "This action cannot be undone. This will permanently delete this conversation and all its associated data.",
+    deleteParentWarning: "⚠️ This is a parent conversation. Deleting it will also delete all associated agent and virtual agent summaries.",
+    cancel: "Cancel",
+    confirm: "Delete",
+    deleting: "Deleting...",
   },
 } as const
 

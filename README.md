@@ -7,10 +7,13 @@ A secure, modern Next.js app for visualizing and analyzing conversation summarie
 - **Secure Authentication**: Username/password login with HTTP-only session cookies
 - **REST API**: POST endpoint to ingest conversation data with API key authentication
 - **Database Storage**: Postgres database via Neon for persistent data storage
-- **Modern UI**: Clean, professional interface with Movistar branding
+- **Modern UI**: Clean, professional interface with customizable branding
 - **Responsive Design**: Fully responsive design that works on all devices
 - **Detailed Views**: Click any conversation to see full details and insights
 - **Real-time Stats**: Dashboard with conversation statistics and metrics
+- **Hierarchical Summaries**: Group Agent/VirtualAgent summaries under parent Conversation summaries
+- **Delete Functionality**: Delete summaries with cascade delete for parent conversations
+- **Customizable Theming**: Configure logo and primary color via environment variables
 
 ## Tech Stack
 
@@ -41,7 +44,22 @@ PASSWORD=your_admin_password
 
 # API Security
 API_KEY=your_secure_api_key
+
+# Customization (Optional)
+LOGO_URL=https://example.com/your-logo.png
+PRIMARY_COLOR=#0B6CFF
 ```
+
+### Environment Variable Details
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DATABASE_URL` | Yes | - | Neon Postgres connection string |
+| `USERNAME` | Yes | - | Admin username for login |
+| `PASSWORD` | Yes | - | Admin password for login |
+| `API_KEY` | Yes | - | API key for POST endpoint authentication |
+| `LOGO_URL` | No | `/movistar-logo.png` | URL to your logo image (supports external URLs) |
+| `PRIMARY_COLOR` | No | `#0B6CFF` | Primary color in hex format for theming |
 
 ## Database Setup
 
@@ -62,7 +80,8 @@ CREATE TABLE IF NOT EXISTS conversations (
   summary TEXT NOT NULL,
   generated BOOLEAN DEFAULT true,
   date_created TIMESTAMP NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  conversation_id VARCHAR(255)  -- Groups Agent/VirtualAgent summaries under a Conversation parent
 );
 
 -- Create insights table to store conversation insights
@@ -80,10 +99,24 @@ CREATE TABLE IF NOT EXISTS insights (
 CREATE INDEX IF NOT EXISTS idx_conversations_summary_type ON conversations(summary_type);
 CREATE INDEX IF NOT EXISTS idx_conversations_date_created ON conversations(date_created DESC);
 CREATE INDEX IF NOT EXISTS idx_conversations_summary_id ON conversations(summary_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_conversation_id ON conversations(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_insights_conversation_id ON insights(conversation_id);
 ```
 
-### 2. Verify Tables
+### 2. Migrating Existing Databases
+
+If you have an existing database without the `conversation_id` column, run:
+
+```sql
+-- Add the conversation_id column if it doesn't exist
+ALTER TABLE conversations 
+ADD COLUMN IF NOT EXISTS conversation_id VARCHAR(255);
+
+-- Create index for the new column
+CREATE INDEX IF NOT EXISTS idx_conversations_conversation_id ON conversations(conversation_id);
+```
+
+### 3. Verify Tables
 
 Verify the tables were created successfully:
 
@@ -144,7 +177,8 @@ Content-Type: application/json
       "sourceId": "5827d8b9-2223-4376-a191-b3d4fbec752f",
       "summary": "Customer contacted regarding Movistar Fusion package details...",
       "generated": true,
-      "dateCreated": "2025-12-18T15:12:59.690Z"
+      "dateCreated": "2025-12-18T15:12:59.690Z",
+      "conversationId": "parent-conversation-summary-id"
     }
   ]
 }
@@ -168,6 +202,71 @@ Content-Type: application/json
 ```json
 {
   "error": "Unauthorized"
+}
+```
+
+### Summary Type Hierarchy
+
+The `summaryType` field supports three values that form a hierarchy:
+
+| Type | Description | conversationId Required |
+|------|-------------|------------------------|
+| `Conversation` | Parent summary representing the entire conversation | No |
+| `Agent` | Summary for a human agent portion | Yes (must match parent's summaryId) |
+| `VirtualAgent` | Summary for a virtual agent/bot portion | Yes (must match parent's summaryId) |
+
+**Hierarchy Rules:**
+- `Conversation` summaries act as parent containers
+- `Agent` and `VirtualAgent` summaries must include `conversationId` matching the parent's `summaryId`
+- Deleting a `Conversation` parent will cascade delete all associated child summaries
+- In the UI, child summaries are displayed nested under their parent with a collapsible interface
+
+### Example: Complete Conversation with Children
+
+```json
+{
+  "entities": [
+    {
+      "summaryType": "Conversation",
+      "mediaType": "Call",
+      "language": "es",
+      "summaryId": "conv-001",
+      "sourceId": "source-123",
+      "summary": "Complete conversation about Movistar Fusion package upgrade...",
+      "generated": true,
+      "dateCreated": "2025-12-18T15:13:30.457Z",
+      "insights": [
+        {
+          "type": "Reason",
+          "title": "Package upgrade inquiry",
+          "description": "Customer wants to upgrade their current plan"
+        }
+      ]
+    },
+    {
+      "summaryType": "VirtualAgent",
+      "mediaType": "Call",
+      "language": "es",
+      "summaryId": "va-001",
+      "sourceId": "source-123",
+      "summary": "Virtual agent greeted customer and collected initial information...",
+      "generated": true,
+      "dateCreated": "2025-12-18T15:10:00.000Z",
+      "conversationId": "conv-001"
+    },
+    {
+      "summaryType": "Agent",
+      "mediaType": "Call",
+      "language": "es",
+      "summaryId": "agent-001",
+      "agentId": "agent-uuid",
+      "sourceId": "source-123",
+      "summary": "Human agent took over and processed the upgrade request...",
+      "generated": true,
+      "dateCreated": "2025-12-18T15:12:00.000Z",
+      "conversationId": "conv-001"
+    }
+  ]
 }
 ```
 
@@ -210,7 +309,7 @@ Content-Type: application/json
 
 ### cURL Examples
 
-**Post a conversation without insights:**
+**Post a parent Conversation summary:**
 ```bash
 curl -X POST https://your-app.vercel.app/api/conversations \
   -H "x-api-key: your_api_key" \
@@ -218,13 +317,12 @@ curl -X POST https://your-app.vercel.app/api/conversations \
   -d '{
     "entities": [
       {
-        "summaryType": "Agent",
+        "summaryType": "Conversation",
         "mediaType": "Call",
         "language": "en",
-        "summaryId": "574a8923-10b8-3541-ab89-9a01092f445e",
-        "agentId": "f6b913a4-724e-4420-9f25-a61ad5dcaeb1",
-        "sourceId": "05181508-9c0a-455b-8caf-130c66ef8b2f",
-        "summary": "Customer inquired about appointment time. Agent confirmed 8:00 AM.",
+        "summaryId": "conv-123",
+        "sourceId": "source-abc",
+        "summary": "Complete customer service interaction about billing inquiry.",
         "generated": true,
         "dateCreated": "2025-12-23T10:36:52.718Z"
       }
@@ -232,7 +330,7 @@ curl -X POST https://your-app.vercel.app/api/conversations \
   }'
 ```
 
-**Post multiple conversations:**
+**Post child summaries linked to a parent:**
 ```bash
 curl -X POST https://your-app.vercel.app/api/conversations \
   -H "x-api-key: your_api_key" \
@@ -242,22 +340,25 @@ curl -X POST https://your-app.vercel.app/api/conversations \
       {
         "summaryType": "Agent",
         "mediaType": "Call",
-        "language": "es",
-        "summaryId": "uuid-1",
-        "sourceId": "source-1",
-        "summary": "First conversation...",
+        "language": "en",
+        "summaryId": "agent-456",
+        "agentId": "agent-uuid",
+        "sourceId": "source-abc",
+        "summary": "Agent resolved the billing discrepancy.",
         "generated": true,
-        "dateCreated": "2025-12-23T10:00:00.000Z"
+        "dateCreated": "2025-12-23T10:40:00.000Z",
+        "conversationId": "conv-123"
       },
       {
         "summaryType": "VirtualAgent",
-        "mediaType": "Message",
+        "mediaType": "Call",
         "language": "en",
-        "summaryId": "uuid-2",
-        "sourceId": "source-2",
-        "summary": "Second conversation...",
+        "summaryId": "va-789",
+        "sourceId": "source-abc",
+        "summary": "Virtual agent collected customer information.",
         "generated": true,
-        "dateCreated": "2025-12-23T11:00:00.000Z"
+        "dateCreated": "2025-12-23T10:35:00.000Z",
+        "conversationId": "conv-123"
       }
     ]
   }'
@@ -278,6 +379,7 @@ curl -X POST https://your-app.vercel.app/api/conversations \
 | `summary` | string | Yes | Summary text of the conversation |
 | `generated` | boolean | Yes | Whether summary was AI-generated |
 | `dateCreated` | string | Yes | ISO-8601 timestamp |
+| `conversationId` | string | Conditional | Parent conversation's summaryId (required for Agent/VirtualAgent) |
 | `insights` | array | No | Array of insight objects |
 
 ### Insight Object
@@ -300,7 +402,8 @@ curl -X POST https://your-app.vercel.app/api/conversations \
 
 3. **Add environment variables** in Vercel dashboard:
    - Go to Project Settings → Environment Variables
-   - Add `DATABASE_URL`, `USERNAME`, `PASSWORD`, and `API_KEY`
+   - Add `DATABASE_URL`, `USERNAME`, `PASSWORD`, `API_KEY`
+   - Optionally add `LOGO_URL` and `PRIMARY_COLOR` for custom branding
 
 4. **Deploy**:
    - Vercel will automatically deploy your app
@@ -320,7 +423,8 @@ curl -X POST https://your-app.vercel.app/api/conversations \
 ```
 ├── app/
 │   ├── actions/
-│   │   └── auth.ts              # Server actions for auth
+│   │   ├── auth.ts              # Server actions for auth
+│   │   └── conversations.ts     # Server actions for conversation operations
 │   ├── api/
 │   │   └── conversations/
 │   │       └── route.ts         # API endpoint
@@ -333,16 +437,23 @@ curl -X POST https://your-app.vercel.app/api/conversations \
 │   ├── layout.tsx               # Root layout
 │   └── page.tsx                 # Dashboard
 ├── components/
+│   ├── conversation-card.tsx    # Conversation card with grouping
+│   ├── delete-button.tsx        # Delete button with confirmation
+│   ├── language-switcher.tsx    # Language selector component
 │   └── ui/                      # Reusable UI components
 ├── lib/
 │   ├── auth.ts                  # Auth utilities
 │   ├── db.ts                    # Database client
+│   ├── env.ts                   # Environment configuration
+│   ├── i18n.ts                  # Internationalization
+│   ├── locale.ts                # Locale detection
 │   ├── types.ts                 # TypeScript types
 │   └── utils.ts                 # Utility functions
 ├── public/
-│   └── movistar-logo.png        # Movistar logo
+│   └── movistar-logo.png        # Default logo
 ├── scripts/
-│   └── 001-init-database.sql   # Database initialization
+│   ├── 001-init-database.sql    # Database initialization
+│   └── 002-add-conversation-id.sql  # Migration for conversation_id
 └── README.md                    # This file
 ```
 
@@ -362,9 +473,22 @@ curl -X POST https://your-app.vercel.app/api/conversations \
 - Verify the `x-api-key` header matches your `API_KEY` environment variable
 - Ensure the header name is exactly `x-api-key` (case-sensitive)
 
+### API returns 400 Bad Request for Agent/VirtualAgent
+- Ensure `conversationId` is included in the request
+- The `conversationId` should match the `summaryId` of a parent `Conversation` summary
+
 ### Tables don't exist
 - Run the SQL initialization script in your Neon database
 - Verify tables were created: `SELECT * FROM conversations LIMIT 1;`
+
+### Logo not loading
+- If using external URL, ensure it's publicly accessible
+- Check that the URL is correctly formatted in `LOGO_URL`
+- For local logos, ensure the file exists in the `public/` directory
+
+### Colors not updating
+- Ensure `PRIMARY_COLOR` is in valid hex format (e.g., `#FF5500`)
+- The `#` prefix is optional but recommended
 
 ## License
 
