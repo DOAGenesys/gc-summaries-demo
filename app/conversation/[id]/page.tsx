@@ -204,7 +204,7 @@ export default async function ConversationDetailPage({
           }}
         />
 
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+        <div className="w-[98%] max-w-[2500px] mx-auto px-4 sm:px-6 lg:px-8 py-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-5">
               <div className="relative">
@@ -243,7 +243,7 @@ export default async function ConversationDetailPage({
       </header>
 
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <main className="w-[98%] max-w-[2500px] mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="space-y-8">
           {/* Summary Card */}
           <Card
@@ -319,103 +319,46 @@ export default async function ConversationDetailPage({
             </CardContent>
           </Card>
 
-          {/* Metadata Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {[
-              { icon: Calendar, label: t.dateCreated, value: formatDate(conversation.date_created), delay: 0.05 },
-              { icon: Globe, label: t.language, value: conversation.language === "es" ? t.spanish : conversation.language === "en" ? t.english : conversation.language, delay: 0.1 },
-              { icon: Hash, label: t.summaryId, value: conversation.summary_id, mono: true, delay: 0.15 },
-              { icon: Hash, label: t.sourceId, value: conversation.source_id, mono: true, delay: 0.2 },
-            ].map((item, index) => (
-              <Card
-                key={item.label}
-                className="group bg-white/80 backdrop-blur-sm border-0 shadow-premium hover:shadow-premium-lg transition-all duration-500 rounded-2xl overflow-hidden hover:-translate-y-1 animate-fade-in-up"
-                style={{ animationDelay: `${item.delay}s` }}
-              >
-                <div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                  style={{ background: `linear-gradient(135deg, ${hexToRgba(primaryColor, 0.03)} 0%, transparent 60%)` }}
-                />
-                <CardContent className="pt-6 pb-5">
-                  <div className="flex items-start gap-4">
+          {/* Metadata Compact Bar */}
+          <Card
+            className="group bg-white/80 backdrop-blur-sm border-0 shadow-premium transition-all duration-500 rounded-2xl overflow-hidden animate-fade-in-up"
+            style={{ animationDelay: '0.05s' }}
+          >
+            <div
+              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+              style={{ background: `linear-gradient(135deg, ${hexToRgba(primaryColor, 0.03)} 0%, transparent 60%)` }}
+            />
+            <CardContent className="p-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-8">
+                {[
+                  { icon: Calendar, label: t.dateCreated, value: formatDate(conversation.date_created) },
+                  { icon: Globe, label: t.language, value: conversation.language === "es" ? t.spanish : conversation.language === "en" ? t.english : conversation.language },
+                  { icon: Hash, label: t.summaryId, value: conversation.summary_id, mono: true },
+                  { icon: Hash, label: t.sourceId, value: conversation.source_id, mono: true },
+                  ...(conversation.agent_id ? [{ icon: User, label: t.agentId, value: conversation.agent_id, mono: true }] : []),
+                  ...(conversation.conversation_id ? [{ icon: Link2, label: t.conversationIdLabel, value: conversation.conversation_id, mono: true }] : []),
+                ].map((item, index) => (
+                  <div key={item.label + index} className="flex items-start gap-4">
                     <div
-                      className="size-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-500"
+                      className="size-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-all duration-500"
                       style={{
-                        background: `linear-gradient(135deg, ${primaryColor} 0%, ${adjustBrightness(primaryColor, -25)} 100%)`,
-                        boxShadow: `0 6px 20px ${hexToRgba(primaryColor, 0.35)}`
+                        background: hexToRgba(primaryColor, 0.08),
+                        color: primaryColor
                       }}
                     >
-                      <item.icon className="size-6 text-white" />
+                      <item.icon className="size-5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{item.label}</p>
-                      <p className={`text-sm text-gray-700 ${item.mono ? 'font-mono break-all' : 'font-medium'}`}>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{item.label}</p>
+                      <p className={`text-sm text-gray-800 ${item.mono ? 'font-mono break-all text-xs' : 'font-medium'}`}>
                         {item.value}
                       </p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-
-            {conversation.agent_id && (
-              <Card
-                className="group bg-white/80 backdrop-blur-sm border-0 shadow-premium hover:shadow-premium-lg transition-all duration-500 rounded-2xl overflow-hidden hover:-translate-y-1 animate-fade-in-up"
-                style={{ animationDelay: '0.25s' }}
-              >
-                <div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                  style={{ background: `linear-gradient(135deg, ${hexToRgba(primaryColor, 0.03)} 0%, transparent 60%)` }}
-                />
-                <CardContent className="pt-6 pb-5">
-                  <div className="flex items-start gap-4">
-                    <div
-                      className="size-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg group-hover:scale-110 transition-all duration-500"
-                      style={{
-                        background: `linear-gradient(135deg, ${primaryColor} 0%, ${adjustBrightness(primaryColor, -25)} 100%)`,
-                        boxShadow: `0 6px 20px ${hexToRgba(primaryColor, 0.35)}`
-                      }}
-                    >
-                      <User className="size-6 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{t.agentId}</p>
-                      <p className="text-sm text-gray-700 font-mono break-all">{conversation.agent_id}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {conversation.conversation_id && (
-              <Card
-                className="group bg-white/80 backdrop-blur-sm border-0 shadow-premium hover:shadow-premium-lg transition-all duration-500 rounded-2xl overflow-hidden hover:-translate-y-1 animate-fade-in-up"
-                style={{ animationDelay: '0.3s' }}
-              >
-                <div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                  style={{ background: `linear-gradient(135deg, ${hexToRgba(primaryColor, 0.03)} 0%, transparent 60%)` }}
-                />
-                <CardContent className="pt-6 pb-5">
-                  <div className="flex items-start gap-4">
-                    <div
-                      className="size-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg group-hover:scale-110 transition-all duration-500"
-                      style={{
-                        background: `linear-gradient(135deg, ${primaryColor} 0%, ${adjustBrightness(primaryColor, -25)} 100%)`,
-                        boxShadow: `0 6px 20px ${hexToRgba(primaryColor, 0.35)}`
-                      }}
-                    >
-                      <Link2 className="size-6 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{t.conversationIdLabel}</p>
-                      <p className="text-sm text-gray-700 font-mono break-all">{conversation.conversation_id}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Child Summaries */}
           {childSummaries.length > 0 && (
@@ -580,14 +523,7 @@ export default async function ConversationDetailPage({
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="mt-16 py-8 border-t" style={{ borderColor: hexToRgba(primaryColor, 0.1) }}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-sm text-gray-400">
-            Powered by AI · Built for exceptional experiences
-          </p>
-        </div>
-      </footer>
+
     </div>
   )
 }

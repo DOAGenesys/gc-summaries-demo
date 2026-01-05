@@ -60,9 +60,9 @@ export default async function DashboardPage() {
   const standaloneConversations: ConversationRow[] = []
   const childrenMap = new Map<string, ConversationRow[]>()
 
-  // First pass: collect all children (Agent/VirtualAgent with conversation_id)
+  // First pass: collect all children (non-Conversation types with conversation_id)
   for (const conv of conversations) {
-    if ((conv.summary_type === "Agent" || conv.summary_type === "VirtualAgent") && conv.conversation_id) {
+    if (conv.conversation_id && conv.summary_type !== "Conversation") {
       const children = childrenMap.get(conv.conversation_id) || []
       children.push(conv)
       childrenMap.set(conv.conversation_id, children)
@@ -159,7 +159,7 @@ export default async function DashboardPage() {
           }}
         />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+        <div className="w-[98%] max-w-[2500px] mx-auto px-4 sm:px-6 lg:px-8 py-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-5">
               <div className="relative">
@@ -213,7 +213,7 @@ export default async function DashboardPage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <main className="w-[98%] max-w-[2500px] mx-auto px-4 sm:px-6 lg:px-8 py-10">
         {/* Stats Overview */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-12">
           {/* Total Card */}
@@ -457,14 +457,7 @@ export default async function DashboardPage() {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="mt-16 py-8 border-t" style={{ borderColor: hexToRgba(primaryColor, 0.1) }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-sm text-gray-400">
-            Powered by AI · Built for exceptional experiences
-          </p>
-        </div>
-      </footer>
+
     </div>
   )
 }
