@@ -99,14 +99,48 @@ export default async function DashboardPage() {
     }
   }
 
-  // Sort groups by latest activity
-  groupedConversations.sort((a, b) => new Date(b.parent.date_created).getTime() - new Date(a.parent.date_created).getTime())
-  sharedConversations.sort((a, b) => {
-    const dateA = a[0] ? new Date(a[0].date_created).getTime() : 0;
-    const dateB = b[0] ? new Date(b[0].date_created).getTime() : 0;
-    return dateB - dateA;
-  })
-  standaloneConversations.sort((a, b) => new Date(b.date_created).getTime() - new Date(a.date_created).getTime())
+  // Create a unified list of all conversation items with their dates for proper sorting
+  type UnifiedItem =
+    | { type: 'grouped'; data: GroupedConversation; date: Date }
+    | { type: 'shared'; data: ConversationRow[]; date: Date }
+    | { type: 'standalone'; data: ConversationRow; date: Date }
+
+  const unifiedItems: UnifiedItem[] = []
+
+  // Add grouped conversations
+  for (const group of groupedConversations) {
+    unifiedItems.push({
+      type: 'grouped',
+      data: group,
+      date: new Date(group.parent.date_created)
+    })
+  }
+
+  // Add shared conversation groups
+  for (const group of sharedConversations) {
+    // Use the most recent date in the group for sorting
+    const mostRecentDate = group.reduce((latest, conv) => {
+      const convDate = new Date(conv.date_created)
+      return convDate > latest ? convDate : latest
+    }, new Date(0))
+    unifiedItems.push({
+      type: 'shared',
+      data: group,
+      date: mostRecentDate
+    })
+  }
+
+  // Add standalone conversations
+  for (const conv of standaloneConversations) {
+    unifiedItems.push({
+      type: 'standalone',
+      data: conv,
+      date: new Date(conv.date_created)
+    })
+  }
+
+  // Sort all items by date descending (most recent first)
+  unifiedItems.sort((a, b) => b.date.getTime() - a.date.getTime())
 
   // Count statistics
   const totalCount = conversations.length
@@ -445,53 +479,55 @@ export default async function DashboardPage() {
             </Card>
           ) : (
             <div className="space-y-4">
-              {/* Grouped Conversations */}
-              {groupedConversations.map((group, index) => (
-                <div
-                  key={group.parent.id}
-                  className="animate-fade-in-up"
-                  style={{ animationDelay: `${index * 0.05}s` }}
-                >
-                  <GroupedConversationCard
-                    group={group}
-                    locale={locale}
-                    translations={cardTranslations}
-                    primaryColor={primaryColor}
-                  />
-                </div>
-              ))}
-
-              {/* Shared Conversation Groups (Orphans with same Conversation ID) */}
-              {sharedConversations.map((group, index) => (
-                <div
-                  key={`shared-${index}`}
-                  className="animate-fade-in-up"
-                  style={{ animationDelay: `${(groupedConversations.length + index) * 0.05}s` }}
-                >
-                  <SharedConversationGroup
-                    conversations={group}
-                    locale={locale}
-                    translations={cardTranslations}
-                    primaryColor={primaryColor}
-                  />
-                </div>
-              ))}
-
-              {/* Standalone Conversations */}
-              {standaloneConversations.map((conversation, index) => (
-                <div
-                  key={conversation.id}
-                  className="animate-fade-in-up"
-                  style={{ animationDelay: `${(groupedConversations.length + sharedConversations.length + index) * 0.05}s` }}
-                >
-                  <ConversationCard
-                    conversation={conversation}
-                    locale={locale}
-                    translations={cardTranslations}
-                    primaryColor={primaryColor}
-                  />
-                </div>
-              ))}
+              {/* All Conversations - Unified and Sorted by Date */}
+              {unifiedItems.map((item, index) => {
+                if (item.type === 'grouped') {
+                  return (
+                    <div
+                      key={item.data.parent.id}
+                      className="animate-fade-in-up"
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                    >
+                      <GroupedConversationCard
+                        group={item.data}
+                        locale={locale}
+                        translations={cardTranslations}
+                        primaryColor={primaryColor}
+                      />
+                    </div>
+                  )
+                } else if (item.type === 'shared') {
+                  return (
+                    <div
+                      key={`shared-${item.data[0]?.id || index}`}
+                      className="animate-fade-in-up"
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                    >
+                      <SharedConversationGroup
+                        conversations={item.data}
+                        locale={locale}
+                        translations={cardTranslations}
+                        primaryColor={primaryColor}
+                      />
+                    </div>
+                  )
+                } else {
+                  return (
+                    <div
+                      key={item.data.id}
+                      className="animate-fade-in-up"
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                    >
+                      <ConversationCard
+                        conversation={item.data}
+                        locale={locale}
+                        translations={cardTranslations}
+                        primaryColor={primaryColor}
+                      />
+                    </div>
+                  )
+                }
+              })}
             </div>
           )}
         </div>

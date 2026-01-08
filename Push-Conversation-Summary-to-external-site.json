@@ -1,0 +1,129 @@
+{
+  "name": "Push Conversation Summary to external site - Exported 2026-01-05 @ 17:00",
+  "integrationType": "custom-rest-actions",
+  "actionType": "custom",
+  "config": {
+    "request": {
+      "requestUrlTemplate": "https://gc-summaries-demo.vercel.app/api/conversations",
+      "requestType": "POST",
+      "headers": {
+        "Content-Type": "application/json",
+        "x-api-key": "${credentials.API_Key}"
+      },
+      "requestTemplate": "{\n  \"entities\": [\n    {\n      \"summaryType\": \"$esc.jsonString(${input.summaryType})\",\n      \"mediaType\": \"$esc.jsonString(${input.mediaType})\",\n      \"language\": \"$esc.jsonString(${input.language})\",\n      \"summaryId\": \"$esc.jsonString(${input.summaryId})\",\n      \"agentId\": #if($input.agentId && $input.agentId != \"\") \"$esc.jsonString(${input.agentId})\" #else null #end,\n      \"sourceId\": \"$esc.jsonString(${input.sourceId})\",\n      \"summary\": \"$esc.jsonString(${input.summary})\",\n      \"conversationId\": \"$esc.jsonString(${input.conversationId})\",\n      \"generated\": ${input.generated},\n      \"dateCreated\": \"$esc.jsonString(${input.dateCreated})\"\n      #if($input.insights && $input.insights != \"\") ,\"insights\": ${input.insights} #end\n    }\n  ]\n}"
+    },
+    "response": {
+      "translationMap": {},
+      "translationMapDefaults": {},
+      "successTemplate": "${rawResult}"
+    }
+  },
+  "contract": {
+    "input": {
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "summaryType",
+          "mediaType",
+          "language",
+          "summaryId",
+          "sourceId",
+          "summary",
+          "dateCreated",
+          "conversationId"
+        ],
+        "properties": {
+          "summaryType": {
+            "type": "string",
+            "default": "voice",
+            "enum": [
+              "Agent",
+              "Conversation",
+              "VirtualAgent"
+            ]
+          },
+          "mediaType": {
+            "type": "string",
+            "default": "Call",
+            "enum": [
+              "Call",
+              "Callback",
+              "Messaging"
+            ]
+          },
+          "language": {
+            "type": "string",
+            "default": "es",
+            "enum": [
+              "es",
+              "en"
+            ]
+          },
+          "summaryId": {
+            "type": "string",
+            "description": "Unique ID for this summary, as per GET /api/v2/speechandtextanalytics/conversations/{conversationId}/summaries"
+          },
+          "agentId": {
+            "type": "string",
+            "description": "Optional Agent ID"
+          },
+          "sourceId": {
+            "type": "string",
+            "description": "source ID for this summary, as per GET /api/v2/speechandtextanalytics/conversations/{conversationId}/summaries"
+          },
+          "summary": {
+            "type": "string",
+            "description": "The text content of the summary"
+          },
+          "generated": {
+            "type": "boolean",
+            "description": "true if auto-generated",
+            "default": true
+          },
+          "dateCreated": {
+            "type": "string",
+            "description": "ISO 8601 Date String, e.g., 2025-02-16T10:30:00Z"
+          },
+          "insights": {
+            "type": "string",
+            "description": "Optional: A stringified JSON array of insight objects"
+          },
+          "conversationId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "output": {
+      "successSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "inserted": {
+            "type": "integer"
+          },
+          "conversations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "summaryId": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "secure": false
+}

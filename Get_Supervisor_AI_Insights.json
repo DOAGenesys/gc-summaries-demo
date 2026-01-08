@@ -1,0 +1,164 @@
+{
+    "name": "Get Supervisor AI Insights w Individual summaries",
+    "integrationType": "purecloud-data-actions",
+    "actionType": "custom",
+    "config": {
+        "request": {
+            "requestUrlTemplate": "/api/v2/speechandtextanalytics/conversations/${input.ConversationID}/summaries",
+            "requestType": "GET",
+            "headers": {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "UserAgent": "PureCloudIntegrations/1.0"
+            },
+            "requestTemplate": "${input.rawRequest}"
+        },
+        "response": {
+            "translationMap": {
+                "SummaryTypes": "$.entities[*].summaryType",
+                "Summaries": "$.entities[*].summary",
+                "Languages": "$.entities[*].language",
+                "ConversationInsights": "$.entities[?(@.summaryType=='Conversation')].insights[*]",
+                "ConversationInsightsRaw": "$.entities[?(@.summaryType=='Conversation')].insights[0]",
+                "MediaTypes": "$.entities[*].mediaType",
+                "Generations": "$.entities[*].generated",
+                "SummaryIds": "$.entities[*].id",
+                "AgentIds": "$.entities[*].userId",
+                "SourceIds": "$.entities[*].sourceId",
+                "Generated": "$.entities[*].generated",
+                "DateCreated": "$.entities[*].dateCreated"
+            },
+            "translationMapDefaults": {
+                "ConversationInsightsRaw": "[]"
+            },
+            "successTemplate": "{\n \"SummaryTypes\": ${SummaryTypes}, \n \"MediaTypes\": ${MediaTypes}, \n \"Languages\": ${Languages},  \n \"Summaries\": ${Summaries}, \n \"Generations\": ${Generations}, \n \"ConversationInsights\": ${ConversationInsights}, \n \"SummaryIds\": ${SummaryIds}, \n \"AgentIds\": ${AgentIds}, \n \"SourceIds\": ${SourceIds}, \n \"Generated\": ${Generated}, \n \"DateCreated\": ${DateCreated}, \n \"ConversationInsightsJson\": \"$esc.jsonString(${ConversationInsightsRaw})\" }"
+        }
+    },
+    "contract": {
+        "input": {
+            "inputSchema": {
+                "$schema": "http://json-schema.org/draft-04/schema#",
+                "title": "Request",
+                "description": "The estimated wait time for a specific media type and queue.",
+                "type": "object",
+                "required": [
+                    "ConversationID"
+                ],
+                "properties": {
+                    "ConversationID": {
+                        "description": "The queue ID.",
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": true
+            }
+        },
+        "output": {
+            "successSchema": {
+                "$schema": "http://json-schema.org/draft-04/schema#",
+                "title": "Response",
+                "type": "object",
+                "properties": {
+                    "SummaryTypes": {
+                        "type": "array",
+                        "minItems": 0,
+                        "items": {
+                            "title": "summaryType",
+                            "type": "string"
+                        }
+                    },
+                    "MediaTypes": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "title": "mediaType"
+                        }
+                    },
+                    "Languages": {
+                        "type": "array",
+                        "items": {
+                            "title": "Language",
+                            "type": "string"
+                        }
+                    },
+                    "Summaries": {
+                        "type": "array",
+                        "items": {
+                            "title": "Summary",
+                            "type": "string"
+                        }
+                    },
+                    "Generations": {
+                        "type": "array",
+                        "items": {
+                            "type": "boolean",
+                            "title": "generated"
+                        }
+                    },
+                    "SummaryIds": {
+                        "type": "array",
+                        "items": {
+                            "title": "id",
+                            "type": "string"
+                        }
+                    },
+                    "AgentIds": {
+                        "type": "array",
+                        "items": {
+                            "title": "userId",
+                            "type": "string"
+                        }
+                    },
+                    "SourceIds": {
+                        "type": "array",
+                        "items": {
+                            "title": "sourceId",
+                            "type": "string"
+                        }
+                    },
+                    "Generated": {
+                        "type": "array",
+                        "items": {
+                            "title": "generated",
+                            "type": "boolean"
+                        }
+                    },
+                    "DateCreated": {
+                        "type": "array",
+                        "items": {
+                            "title": "dateCreated",
+                            "type": "string"
+                        }
+                    },
+                    "ConversationInsightsJson": {
+                        "type": "string",
+                        "title": "ConversationInsightsJson",
+                        "description": "Stringified JSON array of insights, ready for pass-through."
+                    },
+                    "ConversationInsights": {
+                        "type": "array",
+                        "items": {
+                            "title": "Insight",
+                            "type": "object",
+                            "properties": {
+                                "type": {
+                                    "type": "string"
+                                },
+                                "title": {
+                                    "type": "string"
+                                },
+                                "description": {
+                                    "type": "string"
+                                },
+                                "outcome": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                },
+                "additionalProperties": false
+            }
+        }
+    },
+    "secure": false
+}
